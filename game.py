@@ -1,6 +1,7 @@
 import pygame
 from random import randint
 from cube import Cube
+from PriorityQueue import PriorityQueue
 
 
 class Game:
@@ -10,7 +11,7 @@ class Game:
         self.window = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("Random Maze Generation")
         self.clock = pygame.time.Clock()
-        self.size = 20
+        self.size = 30
         self.BLUE = (0, 0, 255)
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
@@ -21,47 +22,80 @@ class Game:
         # starting position for flags
         self.sflag = (0, 0)
         self.fflag = ((len(self.grid) - 1)*self.size, (len(self.grid) - 1)*self.size) 
-        
-        
-    def eller(self):
-        for j, row in enumerate(self.grid):
-            for i in range(len(row)):
-                # code that makes the blue then black animation when generating
-                if i == (len(self.grid) - 1):
-                    pygame.draw.rect(self.window, self.BLACK, (i*self.size, j*self.size, self.size, self.size))
-                    pygame.draw.rect(self.window, self.BLUE, (0,(j+1)*self.size, self.size, self.size))
-                else:
-                    pygame.draw.rect(self.window, self.BLACK, (i*self.size, j*self.size, self.size, self.size))
-                    pygame.draw.rect(self.window, self.BLUE, ((i+1)*self.size, j*self.size, self.size, self.size))
+
+    def genMaze(self):
+        # pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, self.size, 1)) # horizontal row
+        # pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, 1, self.size)) # vertical row
+
+        for j in range(len(self.grid)):
+            # horizontal walls:
             if j != 0:
+                start, end = 0, 0
                 maxcount = max(self.grid[j - 1]) + 1
-                # horizontal rows
-                for i in range(len(row)):
-                    self.clock.tick(180)
-                    connect = randint(0, 1)
-                    if connect:
-                        row[i] = self.grid[j - 1][i]
-                    else:
-                        pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, self.size, 1))
-                        row[i] = maxcount
+                for i in range(len(self.grid[j])):
+                    if self.grid[j - 1][start] != self.grid[j - 1][i]:
+                        # randomly choosing at least one point the numbers have to connect
+                        end = i
+                        numconnects = randint(1, end - start + 1) # find number of connections (at least one)
+                        lis = []
+                        while len(lis) != numconnects:
+                            connect = randint(start, end)
+                            if connect not in lis:
+                                lis.append(connect)
+                        for k in lis:
+                            self.grid[j][k] = self.grid[j - 1][k]
+                # animation
+                for i in range(len(self.grid[j])):
+                    if self.grid[j][i] != self.grid[j - 1][i]:
+                        pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, self.size, 1)) # horizontal row
+                        self.grid[j][i] = maxcount
                         maxcount += 1
-                #print(maxcount, row)
-                    pygame.display.update()
-            # vertical rows
-            for i in range(1, len(row)):
-                connect = randint(0, 1)
+            print(self.grid[j])
+            # vertical connection
+            for i in range(1, len(self.grid[j])):
+                connect = randint(0, 8)
                 if connect:
-                    oldval = row[i - 1]
-                    newval = self.grid[j - 1][i]
-                    # if top row is connected to bottom row then make all the numbers the same
-                    if row[i] == self.grid[j - 1][i]:
-                        row = [newval if row[k] == oldval else row[k] for k in range(len(row))]
+                    if j > 0:
+                        if self.grid[j][i] == self.grid[j - 1][i]: # already horizontal connection
+                            self.makeValuesTheSame(self.grid[j][i], self.grid[j][i - 1], j)
+                        else:
+                            self.grid[j][i] = self.grid[j][i - 1]
                     else:
-                        row[i] = row[i - 1]
-                if not connect:
-                    pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, 1, self.size))
-        pygame.draw.rect(self.window, self.BLACK, (i*self.size, j*self.size, self.size, self.size))
-                
+                        self.grid[j][i] = self.grid[j][i - 1]
+                else:
+                    pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, 1, self.size)) # vertical row
+        # print('-------')
+        # for row in self.grid:
+        #     print(row)
+
+        # debug code: printing numbers down
+        # font = pygame.font.SysFont("arial black", 20)
+        # TEXT_COL = (255, 255, 255)
+        # for j, row in enumerate(self.grid):
+        #     for i in range(len(row)):
+        #         text = str(row[i])
+        #         img = font.render(text, True, TEXT_COL)
+        #         self.window.blit(img, (i*self.size, j*self.size))
+
+    # recursive algorithm to make all the numbers the same if multiple columns are connected in a row
+    def makeValuesTheSame(self, oldval, newval, j):
+        doAgainAbove = False
+        doAgainBelow = False
+        if oldval == newval: # stopping hitting recursion limit
+            return
+        for i in range(len(self.grid[j])):
+            if self.grid[j][i] == oldval:
+                self.grid[j][i] = newval
+            if j > 0:
+                if self.grid[j - 1][i] == oldval:
+                    doAgainAbove = True
+            if j != len(self.grid) - 1:
+                if self.grid[j + 1][i] == oldval:
+                    doAgainBelow = True
+        if doAgainAbove:
+            self.makeValuesTheSame(oldval, newval, j - 1)
+        if doAgainBelow:
+            self.makeValuesTheSame(oldval, newval, j + 1)
 
 
     def run(self):
@@ -76,7 +110,7 @@ class Game:
             self.clock.tick(60)
 
             if start:
-                self.eller()
+                self.genMaze()
                 start = False
             self.window.blit(startimg, self.sflag)
             self.window.blit(finishimg, self.fflag)
@@ -87,8 +121,6 @@ class Game:
                     raise SystemExit
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
-                    print(pos)
-                    x, y = pos.x
                     
 
             pygame.display.update()
