@@ -2,6 +2,7 @@ import pygame
 from random import randint
 from cube import Cube
 from PriorityQueue import PriorityQueue
+import math
 
 
 class Game:
@@ -18,6 +19,8 @@ class Game:
 
         # creating WIDTH/size by HEIGHT/size grid 
         self.grid = [[-1 for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)]
+        self.traverse = [["0000" for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)] # traversal grid for Dijkstra
+        # left wall, right wall, up wall, down wall
 
         # starting position for flags
         self.sflag = (0, 0)
@@ -46,9 +49,6 @@ class Game:
                                 connect = randint(start, end)
                                 if connect not in lis:
                                     lis.append(connect)
-                            lis.sort()
-                            print(lis)
-                            #print(start, end, self.grid[j-1][start], lis)
                             for k in lis:
                                 self.grid[j][k] = self.grid[j - 1][k]
                             start = i
@@ -58,6 +58,9 @@ class Game:
                 # animation
                 for i in range(len(self.grid[j])):
                     if self.grid[j][i] != self.grid[j - 1][i]:
+                        # setting traversal grid 
+                        self.traverse[j][i] = ['1' if k == 2 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
+                        self.traverse[j - 1][i] = ['1' if k == 3 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
                         pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, self.size, 1)) # horizontal row
                         self.grid[j][i] = maxcount
                         maxcount += 1
@@ -65,7 +68,6 @@ class Game:
             if j != len(self.grid) - 1:
                 if j == 0: # need as initializer, all other items in every row should be initialized as -1
                     self.grid[j] = [k for k in range(self.WIDTH//self.size)]
-                print(1, self.grid[j])
                 for i in range(1, len(self.grid[j])):
                     connect = randint(0, 1)
                     if connect:
@@ -77,6 +79,9 @@ class Game:
                         else:
                             self.grid[j][i] = self.grid[j][i - 1]
                     else:
+                        # setting traversal grid
+                        self.traverse[j][i] = ['1' if k == 0 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
+                        self.traverse[j][i - 1] = ['1' if k == 1 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
                         pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, 1, self.size)) # vertical row
             else:
                 for i in range(1, len(self.grid[j])):
@@ -84,6 +89,7 @@ class Game:
                         self.makeValuesTheSame(self.grid[j][i], self.grid[j][i - 1], j)
                     else:
                         self.grid[j][i] = self.grid[j][i - 1]
+
     def makeValuesTheSame(self, oldval, newval, j):
         doAgainAbove = False
         doAgainBelow = False
@@ -103,6 +109,73 @@ class Game:
         if doAgainBelow:
             self.makeValuesTheSame(oldval, newval, j + 1)
 
+    # returning a function of all neighbors if they can be accessed by the square of cordinate pos
+    def neighbors(self, pos):
+        lis = []
+
+        # if square to the right is not separated by a wall
+        coords = (pos[0] + 1, pos[1])
+        print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        if self.traverse[coords[1]][coords[0]][0] ==  '0' and self.traverse[pos[1]][pos[0]][1] == '0':
+            lis.append(coords)
+
+        # if square to the left is not separated by a wall
+        coords = (pos[0] - 1, pos[1])
+        if self.traverse[coords[1]][coords[0]][1] ==  '0' and self.traverse[pos[1]][pos[0]][0] == '0':
+            lis.append(coords)
+
+        # if square one down is not separated by a wall
+        coords = (pos[0], pos[1] + 1)
+        if self.traverse[coords[1]][coords[0]][2] ==  "0" and self.traverse[pos[1]][pos[0]][3] == "0":
+            lis.append(coords)
+
+        # if square one up is not separated by a wall
+        coords = (pos[0], pos[1] - 1)
+        if self.traverse[coords[1]][coords[0]][3] ==  "0" and self.traverse[pos[1]][pos[0]][2] == "0":
+            lis.append(coords)
+
+        return lis
+
+    def dijkstra(self):
+        distance = 0
+        cell = self.sflag
+        pqlis = []
+        for j, row in enumerate(self.grid):
+            for i in range(len(row)):
+                if (i, j) == self.sflag:
+                    pqlis.append(Cube((i,j), 0))
+                else:    
+                    pqlis.append(Cube((i,j), math.inf))
+        pq = PriorityQueue()
+        pq.buildHeap([(cube.distance, cube) for cube in pqlis])
+
+        while not pq.isEmpty():
+            
+            currentVert = pq.delMin()
+
+            for nextVert in self.neighbors(currentVert.coords):
+                newDist = currentVert.distance + 1
+                # Taking a pause here
+                # for future me: Currently just realized self.neighbors returns the coordinates required, but you would need to search for
+                # them in pq unless you completely restructure how you've handled your grid and traverse class (likely make it all Cubes)
+                if newDist < nextVert.distance:
+                    nextVert.distance = newDist
+                    nextVert.setPrevious(currentVert)
+                    pq.decreaseKey(nextVert, newDist)
+                
+                if nextVert.coords == self.fflag:
+                    break
+        
+        vert = nextVert
+        while vert.prev != None:
+            i = vert.coords[0]
+            j = vert.coords[1]
+
+            pygame.draw.rect(self.window, self.BLUE, (i*self.size, j*self.size, self.size, self.size)) # vertical row
+            vert = vert.prev
+        
+        pygame.draw.rect(self.window, self.BLUE, (self.sflag[0]*self.size, self.sflag[1]*self.size, self.size, self.size)) # vertical row
+
 
     def run(self):
 
@@ -117,6 +190,7 @@ class Game:
 
             if start:
                 self.genMaze()
+                self.dijkstra()
                 start = False
             self.window.blit(startimg, self.sflag)
             self.window.blit(finishimg, self.fflag)
@@ -130,25 +204,6 @@ class Game:
                     
 
             pygame.display.update()
-
-    # returning a function of all neighbors if they can be accessed by the square of cordinate pos
-    def neighbors(self, pos):
-        lis = []
-        checkCoords = [(pos[0] + 1, pos[1]), (pos[0] - 1, pos[1]), (pos[0], pos[1] + 1), (pos[0], pos[1] - 1)]
-        for coord in checkCoords:
-            if self.grid[coord[1]][coord[0]] == self.grid[pos[1]][pos[0]]:
-                lis.append(coord)
-        return lis
-
-    def dijkstra(self):
-        distance = 0
-        cell = self.sflag
-        queue = [Cube(self.neighbors(cell), distance + 1)]
-        queue.sort().reverse()
-
-        while len(queue)!= 0 and cell != self.fflag:
-            
-            coords = queue[0]
 
 
 if __name__ == "__main__":
