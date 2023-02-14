@@ -11,13 +11,13 @@ class Game:
         self.window = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("Random Maze Generation")
         self.clock = pygame.time.Clock()
-        self.size = 30
+        self.size = 20
         self.BLUE = (0, 0, 255)
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
 
         # creating WIDTH/size by HEIGHT/size grid 
-        self.grid = [[i for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)]
+        self.grid = [[-1 for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)]
 
         # starting position for flags
         self.sflag = (0, 0)
@@ -32,52 +32,58 @@ class Game:
             if j != 0:
                 start, end = 0, 0
                 maxcount = max(self.grid[j - 1]) + 1
+                i = 0
+                numDone = []
                 for i in range(len(self.grid[j])):
-                    if self.grid[j - 1][start] != self.grid[j - 1][i]:
-                        # randomly choosing at least one point the numbers have to connect
-                        end = i
-                        numconnects = randint(1, end - start + 1) # find number of connections (at least one)
-                        lis = []
-                        while len(lis) != numconnects:
-                            connect = randint(start, end)
-                            if connect not in lis:
-                                lis.append(connect)
-                        for k in lis:
-                            self.grid[j][k] = self.grid[j - 1][k]
+                    if self.grid[j-1][i] not in numDone or i == len(self.grid[j]) - 1:
+                        numDone.append(self.grid[j-1][i])
+                        if i != 0:
+                            # randomly choosing at least one point the numbers have to connect
+                            end = i - 1
+                            numconnects = randint(1, end - start + 1) # find number of connections (at least one)
+                            lis = []
+                            while len(lis) != numconnects:
+                                connect = randint(start, end)
+                                if connect not in lis:
+                                    lis.append(connect)
+                            lis.sort()
+                            print(lis)
+                            #print(start, end, self.grid[j-1][start], lis)
+                            for k in lis:
+                                self.grid[j][k] = self.grid[j - 1][k]
+                            start = i
+                    if i == len(self.grid[j]) - 1 and self.grid[j-1][i] != self.grid[j-1][i-1]:
+                        self.grid[j][i] = self.grid[j-1][i]
+
                 # animation
                 for i in range(len(self.grid[j])):
                     if self.grid[j][i] != self.grid[j - 1][i]:
                         pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, self.size, 1)) # horizontal row
                         self.grid[j][i] = maxcount
                         maxcount += 1
-            print(self.grid[j])
             # vertical connection
-            for i in range(1, len(self.grid[j])):
-                connect = randint(0, 8)
-                if connect:
-                    if j > 0:
-                        if self.grid[j][i] == self.grid[j - 1][i]: # already horizontal connection
-                            self.makeValuesTheSame(self.grid[j][i], self.grid[j][i - 1], j)
+            if j != len(self.grid) - 1:
+                if j == 0: # need as initializer, all other items in every row should be initialized as -1
+                    self.grid[j] = [k for k in range(self.WIDTH//self.size)]
+                print(1, self.grid[j])
+                for i in range(1, len(self.grid[j])):
+                    connect = randint(0, 1)
+                    if connect:
+                        if j > 0:
+                            if self.grid[j][i] == self.grid[j - 1][i]: # already horizontal connection
+                                self.makeValuesTheSame(self.grid[j][i], self.grid[j][i - 1], j)
+                            else:
+                                self.grid[j][i] = self.grid[j][i - 1]
                         else:
                             self.grid[j][i] = self.grid[j][i - 1]
                     else:
+                        pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, 1, self.size)) # vertical row
+            else:
+                for i in range(1, len(self.grid[j])):
+                    if self.grid[j][i] == self.grid[j - 1][i]: # already horizontal connection
+                        self.makeValuesTheSame(self.grid[j][i], self.grid[j][i - 1], j)
+                    else:
                         self.grid[j][i] = self.grid[j][i - 1]
-                else:
-                    pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, 1, self.size)) # vertical row
-        # print('-------')
-        # for row in self.grid:
-        #     print(row)
-
-        # debug code: printing numbers down
-        # font = pygame.font.SysFont("arial black", 20)
-        # TEXT_COL = (255, 255, 255)
-        # for j, row in enumerate(self.grid):
-        #     for i in range(len(row)):
-        #         text = str(row[i])
-        #         img = font.render(text, True, TEXT_COL)
-        #         self.window.blit(img, (i*self.size, j*self.size))
-
-    # recursive algorithm to make all the numbers the same if multiple columns are connected in a row
     def makeValuesTheSame(self, oldval, newval, j):
         doAgainAbove = False
         doAgainBelow = False
