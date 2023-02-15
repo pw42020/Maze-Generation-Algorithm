@@ -12,19 +12,19 @@ class Game:
         self.window = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("Random Maze Generation")
         self.clock = pygame.time.Clock()
-        self.size = 20
+        self.size = 120
         self.BLUE = (0, 0, 255)
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
 
         # creating WIDTH/size by HEIGHT/size grid 
-        self.grid = [[-1 for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)]
-        self.traverse = [["0000" for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)] # traversal grid for Dijkstra
+        self.grid = [[Cube((i,j), math.inf) for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)]
+        self.traverse = [[['0','0','0','0'] for i in range(self.WIDTH//self.size)] for j in range(self.HEIGHT//self.size)] # traversal grid for Dijkstra
         # left wall, right wall, up wall, down wall
 
         # starting position for flags
         self.sflag = (0, 0)
-        self.fflag = ((len(self.grid) - 1)*self.size, (len(self.grid) - 1)*self.size) 
+        self.fflag = ((len(self.grid) - 1), (len(self.grid) - 1)) 
 
     def genMaze(self):
         # pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, self.size, 1)) # horizontal row
@@ -34,12 +34,12 @@ class Game:
             # horizontal walls:
             if j != 0:
                 start, end = 0, 0
-                maxcount = max(self.grid[j - 1]) + 1
+                maxcount = max([cube.value for cube in self.grid[j-1]]) + 1
                 i = 0
                 numDone = []
                 for i in range(len(self.grid[j])):
-                    if self.grid[j-1][i] not in numDone or i == len(self.grid[j]) - 1:
-                        numDone.append(self.grid[j-1][i])
+                    if self.grid[j-1][i].value not in numDone or i == len(self.grid[j]) - 1:
+                        numDone.append(self.grid[j-1][i].value)
                         if i != 0:
                             # randomly choosing at least one point the numbers have to connect
                             end = i - 1
@@ -50,34 +50,35 @@ class Game:
                                 if connect not in lis:
                                     lis.append(connect)
                             for k in lis:
-                                self.grid[j][k] = self.grid[j - 1][k]
+                                self.grid[j][k].value = self.grid[j - 1][k].value
                             start = i
-                    if i == len(self.grid[j]) - 1 and self.grid[j-1][i] != self.grid[j-1][i-1]:
-                        self.grid[j][i] = self.grid[j-1][i]
+                    if i == len(self.grid[j]) - 1 and self.grid[j-1][i].value != self.grid[j-1][i-1].value:
+                        self.grid[j][i].value = self.grid[j-1][i].value
 
                 # animation
                 for i in range(len(self.grid[j])):
-                    if self.grid[j][i] != self.grid[j - 1][i]:
+                    if self.grid[j][i].value != self.grid[j - 1][i].value:
                         # setting traversal grid 
                         self.traverse[j][i] = ['1' if k == 2 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
                         self.traverse[j - 1][i] = ['1' if k == 3 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
                         pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, self.size, 1)) # horizontal row
-                        self.grid[j][i] = maxcount
+                        self.grid[j][i].value = maxcount
                         maxcount += 1
             # vertical connection
             if j != len(self.grid) - 1:
                 if j == 0: # need as initializer, all other items in every row should be initialized as -1
-                    self.grid[j] = [k for k in range(self.WIDTH//self.size)]
+                    for k in range(self.WIDTH//self.size):
+                        self.grid[j][k].value = k
                 for i in range(1, len(self.grid[j])):
                     connect = randint(0, 1)
                     if connect:
                         if j > 0:
-                            if self.grid[j][i] == self.grid[j - 1][i]: # already horizontal connection
-                                self.makeValuesTheSame(self.grid[j][i], self.grid[j][i - 1], j)
+                            if self.grid[j][i].value == self.grid[j - 1][i].value: # already horizontal connection
+                                self.makeValuesTheSame(self.grid[j][i].value, self.grid[j][i - 1].value, j)
                             else:
-                                self.grid[j][i] = self.grid[j][i - 1]
+                                self.grid[j][i].value = self.grid[j][i - 1].value
                         else:
-                            self.grid[j][i] = self.grid[j][i - 1]
+                            self.grid[j][i].value = self.grid[j][i - 1].value
                     else:
                         # setting traversal grid
                         self.traverse[j][i] = ['1' if k == 0 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
@@ -88,7 +89,7 @@ class Game:
                     if self.grid[j][i] == self.grid[j - 1][i]: # already horizontal connection
                         self.makeValuesTheSame(self.grid[j][i], self.grid[j][i - 1], j)
                     else:
-                        self.grid[j][i] = self.grid[j][i - 1]
+                        self.grid[j][i].value = self.grid[j][i - 1].value
 
     def makeValuesTheSame(self, oldval, newval, j):
         doAgainAbove = False
@@ -96,13 +97,13 @@ class Game:
         if oldval == newval: # stopping hitting recursion limit
             return
         for i in range(len(self.grid[j])):
-            if self.grid[j][i] == oldval:
-                self.grid[j][i] = newval
+            if self.grid[j][i].value == oldval:
+                self.grid[j][i].value = newval
             if j > 0:
-                if self.grid[j - 1][i] == oldval:
+                if self.grid[j - 1][i].value == oldval:
                     doAgainAbove = True
             if j != len(self.grid) - 1:
-                if self.grid[j + 1][i] == oldval:
+                if self.grid[j + 1][i].value == oldval:
                     doAgainBelow = True
         if doAgainAbove:
             self.makeValuesTheSame(oldval, newval, j - 1)
@@ -115,25 +116,32 @@ class Game:
 
         # if square to the right is not separated by a wall
         coords = (pos[0] + 1, pos[1])
-        print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
-        if self.traverse[coords[1]][coords[0]][0] ==  '0' and self.traverse[pos[1]][pos[0]][1] == '0':
+        if pos[0] + 1 < len(self.grid):
+            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        if pos[0] + 1 < len(self.grid) and self.traverse[coords[1]][coords[0]][0] ==  '0' and self.traverse[pos[1]][pos[0]][1] == '0':
             lis.append(coords)
-
+        print(coords)
         # if square to the left is not separated by a wall
         coords = (pos[0] - 1, pos[1])
-        if self.traverse[coords[1]][coords[0]][1] ==  '0' and self.traverse[pos[1]][pos[0]][0] == '0':
+        if pos[0] - 1 < len(self.grid):
+            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        if pos[0] - 1 >= 0 and self.traverse[coords[1]][coords[0]][1] ==  '0' and self.traverse[pos[1]][pos[0]][0] == '0':
             lis.append(coords)
-
+        print(coords)
         # if square one down is not separated by a wall
         coords = (pos[0], pos[1] + 1)
-        if self.traverse[coords[1]][coords[0]][2] ==  "0" and self.traverse[pos[1]][pos[0]][3] == "0":
+        if pos[1] + 1 < len(self.grid):
+            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        if pos[1] + 1 < len(self.grid) and self.traverse[coords[1]][coords[0]][2] ==  "0" and self.traverse[pos[1]][pos[0]][3] == "0":
             lis.append(coords)
-
+        print(coords)
         # if square one up is not separated by a wall
         coords = (pos[0], pos[1] - 1)
-        if self.traverse[coords[1]][coords[0]][3] ==  "0" and self.traverse[pos[1]][pos[0]][2] == "0":
+        if pos[1] - 1 < len(self.grid):
+            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        if pos[1] - 1 >= 0 and self.traverse[coords[1]][coords[0]][3] ==  "0" and self.traverse[pos[1]][pos[0]][2] == "0":
             lis.append(coords)
-
+        print(coords)
         return lis
 
     def dijkstra(self):
@@ -143,33 +151,41 @@ class Game:
         for j, row in enumerate(self.grid):
             for i in range(len(row)):
                 if (i, j) == self.sflag:
-                    pqlis.append(Cube((i,j), 0))
+                    self.grid[j][i].distance = 0
+                    pqlis.append(self.grid[j][i])
                 else:    
-                    pqlis.append(Cube((i,j), math.inf))
+                    pqlis.append(self.grid[j][i])
         pq = PriorityQueue()
         pq.buildHeap([(cube.distance, cube) for cube in pqlis])
 
-        while not pq.isEmpty():
+        nextVert = (-1,-1)
+        while not pq.isEmpty() and nextVert != self.fflag:
             
             currentVert = pq.delMin()
-
-            for nextVert in self.neighbors(currentVert.coords):
+            neighbors = self.neighbors(currentVert.coords)
+            print(neighbors)
+            
+            print('----')
+            for nextVert in neighbors:
+                cube = self.grid[nextVert[1]][nextVert[0]] #[::-1] reverses tuple
                 newDist = currentVert.distance + 1
                 # Taking a pause here
                 # for future me: Currently just realized self.neighbors returns the coordinates required, but you would need to search for
                 # them in pq unless you completely restructure how you've handled your grid and traverse class (likely make it all Cubes)
-                if newDist < nextVert.distance:
-                    nextVert.distance = newDist
-                    nextVert.setPrevious(currentVert)
-                    pq.decreaseKey(nextVert, newDist)
+                if newDist < cube.distance:
+                    cube.distance = newDist
+                    cube.setPrevious(currentVert)
+                    pq.decreaseKey(cube, newDist)
                 
-                if nextVert.coords == self.fflag:
+                if cube.coords == self.fflag:
+                    print(cube.coords, self.fflag)
                     break
-        
-        vert = nextVert
+        print("Finished!")
+        vert = self.grid[nextVert[1]][nextVert[0]]
         while vert.prev != None:
             i = vert.coords[0]
             j = vert.coords[1]
+            print(i, j)
 
             pygame.draw.rect(self.window, self.BLUE, (i*self.size, j*self.size, self.size, self.size)) # vertical row
             vert = vert.prev
@@ -192,8 +208,8 @@ class Game:
                 self.genMaze()
                 self.dijkstra()
                 start = False
-            self.window.blit(startimg, self.sflag)
-            self.window.blit(finishimg, self.fflag)
+            self.window.blit(startimg, (self.sflag[0]*self.size, self.sflag[1]*self.size))
+            self.window.blit(finishimg, (self.fflag[0]*self.size, self.fflag[1]*self.size))
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:

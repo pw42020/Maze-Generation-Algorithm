@@ -3,6 +3,7 @@ class Cube:
         self.coords = coords
         self.distance = distance
         self.prev = None
+        self.value = -1
     
 
     def setPrevious(self, coords):
