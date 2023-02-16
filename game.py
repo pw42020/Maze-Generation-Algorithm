@@ -12,7 +12,7 @@ class Game:
         self.window = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("Random Maze Generation")
         self.clock = pygame.time.Clock()
-        self.size = 120
+        self.size = 60
         self.BLUE = (0, 0, 255)
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
@@ -82,7 +82,7 @@ class Game:
                     else:
                         # setting traversal grid
                         self.traverse[j][i] = ['1' if k == 0 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
-                        self.traverse[j][i - 1] = ['1' if k == 1 else self.traverse[j][i][k] for k in range(len(self.traverse[j][i]))]
+                        self.traverse[j][i - 1] = ['1' if k == 1 else self.traverse[j][i-1][k] for k in range(len(self.traverse[j][i]))]
                         pygame.draw.rect(self.window, self.WHITE, (i*self.size, j*self.size, 1, self.size)) # vertical row
             else:
                 for i in range(1, len(self.grid[j])):
@@ -116,32 +116,32 @@ class Game:
 
         # if square to the right is not separated by a wall
         coords = (pos[0] + 1, pos[1])
-        if pos[0] + 1 < len(self.grid):
-            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        # if pos[0] + 1 < len(self.grid):
+        #     print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
         if pos[0] + 1 < len(self.grid) and self.traverse[coords[1]][coords[0]][0] ==  '0' and self.traverse[pos[1]][pos[0]][1] == '0':
             lis.append(coords)
-        print(coords)
+        # print(coords)
         # if square to the left is not separated by a wall
         coords = (pos[0] - 1, pos[1])
-        if pos[0] - 1 < len(self.grid):
-            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        # if pos[0] - 1 < len(self.grid):
+        #     print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
         if pos[0] - 1 >= 0 and self.traverse[coords[1]][coords[0]][1] ==  '0' and self.traverse[pos[1]][pos[0]][0] == '0':
             lis.append(coords)
-        print(coords)
+        # print(coords)
         # if square one down is not separated by a wall
         coords = (pos[0], pos[1] + 1)
-        if pos[1] + 1 < len(self.grid):
-            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
-        if pos[1] + 1 < len(self.grid) and self.traverse[coords[1]][coords[0]][2] ==  "0" and self.traverse[pos[1]][pos[0]][3] == "0":
+        # if pos[1] + 1 < len(self.grid):
+        #     print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        if pos[1] + 1 < len(self.grid) and self.traverse[coords[1]][coords[0]][3] ==  '0' and self.traverse[pos[1]][pos[0]][2] == '0':
             lis.append(coords)
-        print(coords)
+        # print(coords)
         # if square one up is not separated by a wall
         coords = (pos[0], pos[1] - 1)
-        if pos[1] - 1 < len(self.grid):
-            print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
-        if pos[1] - 1 >= 0 and self.traverse[coords[1]][coords[0]][3] ==  "0" and self.traverse[pos[1]][pos[0]][2] == "0":
+        # if pos[1] - 1 < len(self.grid):
+        #     print(self.traverse[coords[1]][coords[0]], self.traverse[pos[1]][pos[0]])
+        if pos[1] - 1 >= 0 and self.traverse[coords[1]][coords[0]][2] ==  '0' and self.traverse[pos[1]][pos[0]][3] == '0':
             lis.append(coords)
-        print(coords)
+        # print(coords)
         return lis
 
     def dijkstra(self):
@@ -163,16 +163,16 @@ class Game:
             
             currentVert = pq.delMin()
             neighbors = self.neighbors(currentVert.coords)
-            print(neighbors)
+            print(f"currentVert: {currentVert.coords} | distance : {currentVert.distance} | neighbors: {neighbors}")
+            #pygame.draw.rect(self.window, self.BLUE, (currentVert.coords[0]*self.size, currentVert.coords[1]*self.size, self.size, self.size))
             
             print('----')
             for nextVert in neighbors:
                 cube = self.grid[nextVert[1]][nextVert[0]] #[::-1] reverses tuple
                 newDist = currentVert.distance + 1
-                # Taking a pause here
-                # for future me: Currently just realized self.neighbors returns the coordinates required, but you would need to search for
-                # them in pq unless you completely restructure how you've handled your grid and traverse class (likely make it all Cubes)
+
                 if newDist < cube.distance:
+                    print(f"nextVert coordinates: {nextVert} | new distance: {newDist}")
                     cube.distance = newDist
                     cube.setPrevious(currentVert)
                     pq.decreaseKey(cube, newDist)
@@ -187,14 +187,14 @@ class Game:
             j = vert.coords[1]
             print(i, j)
 
-            pygame.draw.rect(self.window, self.BLUE, (i*self.size, j*self.size, self.size, self.size)) # vertical row
+            pygame.draw.rect(self.window, (0, 255, 0), (i*self.size, j*self.size, self.size, self.size))
             vert = vert.prev
         
-        pygame.draw.rect(self.window, self.BLUE, (self.sflag[0]*self.size, self.sflag[1]*self.size, self.size, self.size)) # vertical row
+        pygame.draw.rect(self.window, (0, 255, 0), (self.sflag[0]*self.size, self.sflag[1]*self.size, self.size, self.size))
 
 
     def run(self):
-
+        
         start = True
         self.window.fill("black")
         simg = pygame.image.load("images/start.png")
@@ -217,6 +217,9 @@ class Game:
                     raise SystemExit
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
+                    x = round((pos[0] - self.size//2)/self.size)
+                    y = round((pos[1] - self.size//2)/self.size)
+                    print(f"traversal string at ({x,y}): {self.traverse[x][y]}")
                     
 
             pygame.display.update()
